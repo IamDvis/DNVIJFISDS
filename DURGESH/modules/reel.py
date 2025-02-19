@@ -6,72 +6,67 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from DURGESH import app
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
 @app.on_message(filters.text & filters.regex(r"^(https?://)?(www\.)?(instagram\.com|instagr\.am)/.*$"))
 async def auto_download_instagram_video(client, message):
-    url = message.text
+    url = message.text.strip()
     a = await message.reply_text("ᴘʀᴏᴄᴇssɪɴɢ...")
     api_url = f"https://insta-dl.hazex.workers.dev/?url={url}"
 
     try:
-        logging.info(f"Sending request to: {api_url}")
-        response = requests.get(api_url)
-        response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+        logging.info(f"Requesting: {api_url}")
+        response = requests.get(api_url, timeout=10)
+        response.raise_for_status()
         result = response.json()
-        logging.info(f"API Response: {result}")
+        if result.get("error") or "result" not in result:
+            raise ValueError("Invalid API response")
         data = result["result"]
+        video_url = data["url"]
+        
+        # Validate video URL
+        head_response = requests.head(video_url, timeout=5)
+        head_response.raise_for_status()
+
     except requests.exceptions.RequestException as e:
-        err_message = f"Network Eʀʀᴏʀ: {e}"
-        logging.error(err_message)
-        try:
-            await a.edit(err_message)
-        except Exception as edit_error:
-            logging.error(f"Edit error: {edit_error}")
-            await message.reply_text(err_message)
-        return
-    except (KeyError, ValueError) as e:
-        err_message = f"Data processing Eʀʀᴏʀ: {e}"
-        logging.error(err_message)
-        try:
-            await a.edit(err_message)
-        except Exception as edit_error:
-            logging.error(f"Edit error: {edit_error}")
-            await message.reply_text(err_message)
-        return
-    except Exception as e:
-        err_message = f"Unknown Eʀʀᴏʀ: {e}"
-        logging.error(err_message)
-        try:
-            await a.edit(err_message)
-        except Exception as edit_error:
-            logging.error(f"Edit error: {edit_error}")
-            await message.reply_text(err_message)
+        err_msg = f"API Error: {e}"
+        await a.edit(err_msg)
         return
 
-    if not result["error"]:
-        video_url = data["url"]
-        duration = data["duration"]
-        quality = data["quality"]
-        type = data["extension"]
-        size = data["formattedSize"]
-        audio_url = data.get("audio_url")  # Use .get() to avoid KeyError if audio_url is missing
-        caption = (
-            f"**Dᴜʀᴀᴛɪᴏɴ :** {duration}\n"
-            f"**Qᴜᴀʟɪᴛʏ :** {quality}\n"
-            f"**Tʏᴘᴇ :** {type}\n"
-            f"**Sɪᴢᴇ :** {size}"
-        )
-        buttons = InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("Extract Audio", url=audio_url)] if audio_url else []
-            ]
-        )
+    # Download video locally
+    temp_video = "temp_video.mp4"
+    try:
+        with requests.get(video_url, stream=True, timeout=60) as r:
+            r.raise_for_status()
+            with open(temp_video, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        # Get file size
+        size = os.path.getsize(temp_video)
+        size_mb = round(size / (1024 * 1024), 2)
+    except Exception as e:
+        await a.edit(f"Video download failed: {e}")
+        return
+    finally:
+        if os.path.exists(temp_video) is False:
+            await a.edit("Video file not found")
+            return
+
+    # Generate caption
+    duration = data.get("duration", "unknown")
+    quality = data.get("quality", "unknown")
+    file_type = data.get("extension", "unknown")
+    caption = (
+        f"**Dᴜʀᴀᴛɪᴏɴ :** {duration}\n"
+        f"**Qᴜᴀʟɪᴛʏ :** {quality}\n"
+        f"**Tʏᴘᴇ :** {file_type}\n"
+        f"**Sɪᴢᴇ :** {size_mb} MB"
+    )
+
+    try:
+        await message.reply_video(temp_video, caption=caption)
         await a.delete()
-        await message.reply_video(video_url, caption=caption, reply_markup=buttons)
-    else:
-        try:
-            await a.edit("Fᴀɪʟᴇᴅ ᴛᴏ ᴅᴏᴡɴʟᴏᴀᴅ ʀᴇᴇʟ")
-        except Exception:
-            await message.reply_text("Fᴀɪʟᴇᴅ ᴛᴏ ᴅᴏᴡɴʟᴏᴀᴅ ʀᴇᴇʟ")
+    except Exception as e:
+        await a.edit(f"Failed to send video: {e}")
+        return
+
+    # Cleanup
+    os.remove(temp_video)
