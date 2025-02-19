@@ -1,6 +1,6 @@
 from pyrogram.types import InlineKeyboardButton
 
-from config import SUPPORT_GRP, UPDATE_CHNL
+from config import SUPPORT_GROUP, SUPPORT_CHANNEL
 from DURGESH import BOT_USERNAME, OWNER
 
 DEV_OP = [
@@ -12,7 +12,7 @@ DEV_OP = [
     ],
     [
         InlineKeyboardButton(text="ʀᴇᴘᴏ", callback_data="SOURCE"),
-        InlineKeyboardButton(text="sᴜᴘᴘᴏʀᴛ", url=f"https://t.me/{SUPPORT_GRP}"),
+        InlineKeyboardButton(text="sᴜᴘᴘᴏʀᴛ", url=f"https://t.me/{SUPPORT_GROUP}"),
     ],
     [
         InlineKeyboardButton(text="ʜᴇʟᴘ ᴄᴏᴍᴍᴀɴᴅ", callback_data="HELP"),
@@ -26,7 +26,7 @@ PNG_BTN = [
             text="ᴀᴅᴅ ᴍᴇ",
             url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
         ),
-        InlineKeyboardButton(text="ᴜᴘᴅᴀᴛᴇ", url=f"https://t.me/{UPDATE_CHNL}"),
+        InlineKeyboardButton(text="ᴜᴘᴅᴀᴛᴇ", url=f"https://t.me/{SUPPORT_CHANNEL}"),
     ],
 ]
 
