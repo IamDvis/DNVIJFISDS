@@ -58,16 +58,27 @@ async def extract_audio(client, callback_query):
     status_msg = await callback_query.message.reply_text("Downloading audio...")
 
     try:
-        # Use pytube to download the best audio stream
-        yt = YouTube(video_url)
-        audio_stream = yt.streams.filter(only_audio=True).first()
-
-        if not audio_stream:
-            await status_msg.edit("No audio stream found.")
+        # Check if URL is accessible
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
+        response = requests.head(video_url, headers=headers)
+        
+        if response.status_code != 200:
+            await status_msg.edit("Failed to access video URL.")
             return
 
+        # Define output file
         output_path = f"downloads/audio_{message_id}.mp3"
-        audio_stream.download(filename=output_path)
+
+        # Use FFmpeg to extract audio
+        ffmpeg_command = f'ffmpeg -i "{video_url}" -q:a 0 -map a "{output_path}" -y'
+        os.system(ffmpeg_command)
+
+        # Check if file is created
+        if not os.path.exists(output_path):
+            await status_msg.edit("Error: Audio file not created.")
+            return
 
         # Send the audio file
         await callback_query.message.reply_audio(
