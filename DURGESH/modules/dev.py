@@ -27,7 +27,7 @@ async def aexec(code, client, message):
     try:
         exec(exec_code, globals(), exec_locals)
     except:
-        raise  # Handle or log the exception
+        raise  # Propagate the exception
     
     # Check if __aexec was defined
     if "__aexec" not in exec_locals:
@@ -35,7 +35,7 @@ async def aexec(code, client, message):
     
     # Execute the dynamic function and return its result
     func = exec_locals["__aexec"]
-    return await func(client, message)
+    return await func(client, message)  # Return the function's return value
 
 
 async def edit_or_reply(msg: Message, **kwargs):
@@ -64,27 +64,37 @@ async def executor(client: app, message: Message):
     t1 = time()
     old_stderr = sys.stderr
     old_stdout = sys.stdout
-    redirected_output = sys.stdout = StringIO()
-    redirected_error = sys.stderr = StringIO()
-    stdout, stderr, exc = None, None, None
+    redirected_output = StringIO()
+    redirected_error = StringIO()
+    result = None
+    exc = None
+    
     try:
-        await aexec(cmd, client, message)
+        sys.stdout, sys.stderr = redirected_output, redirected_error
+        result = await aexec(cmd, client, message)
     except Exception:
         exc = traceback.format_exc()
-    stdout = redirected_output.getvalue()
-    stderr = redirected_error.getvalue()
-    sys.stdout = old_stdout
-    sys.stderr = old_stderr
-    evaluation = "\n"
+    finally:
+        sys.stdout, sys.stderr = old_stdout, old_stderr
+    
+    stdout = redirected_output.getvalue().strip()
+    stderr = redirected_error.getvalue().strip()
+    
+    evaluation = ""
     if exc:
-        evaluation += exc.strip()
-    elif stderr:
-        evaluation += stderr.strip()
-    elif stdout:
-        evaluation += stdout.strip()
+        evaluation = exc.strip()
     else:
-        evaluation += "Success"
+        parts = []
+        if stderr.strip():
+            parts.append(stderr.strip())
+        if stdout.strip():
+            parts.append(stdout.strip())
+        if result is not None:
+            parts.append(f"Return Value: {result!r}")
+        evaluation = "\n\n".join(parts) if parts else "Success"
+    
     final_output = f"<b>⥤ ʀᴇsᴜʟᴛ :</b>\n<pre language='python'>{evaluation}</pre>"
+    
     if len(final_output) > 4096:
         filename = "output.txt"
         with open(filename, "w+", encoding="utf8") as out_file:
@@ -176,7 +186,7 @@ async def shellrunner(_, message: Message):
                 )
             except Exception as err:
                 await edit_or_reply(message, text=f"<b>ᴇʀʀᴏʀ :</b>\n<pre>{err}</pre>")
-                break
+                continue
             output += f"<b>{x}</b>\n"
             output += process.stdout.read().decode("utf-8").strip()
             output += "\n"
