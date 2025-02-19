@@ -1,6 +1,7 @@
 flask # app.py
 aiohttp # dev.py
-yt_dlp # reel
+#yt_dlp # reel
+pytube # reel
 #--------##
 pyrogram==2.0.106
 pymongo==4.7.0
