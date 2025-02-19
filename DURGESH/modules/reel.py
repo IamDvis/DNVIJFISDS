@@ -77,3 +77,4 @@ async def extract_audio(client, callback_query):
         
     except Exception as e:
         await status_msg.edit(f"Error extracting audio: {str(e)}")
+
