@@ -40,21 +40,23 @@ async def auto_download_instagram_video(client, message):
             with open(temp_video, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
-        # Get file size
+        # Get video details
+        duration = data.get("duration", "unknown")
+        quality = data.get("quality", "unknown")
+        file_type = data.get("extension", "unknown")
         size = os.path.getsize(temp_video)
         size_mb = round(size / (1024 * 1024), 2)
+        audio_url = data.get("audio_url")  # Get audio URL if available
+        
     except Exception as e:
         await a.edit(f"Video download failed: {e}")
         return
     finally:
-        if os.path.exists(temp_video) is False:
+        if not os.path.exists(temp_video):
             await a.edit("Video file not found")
             return
 
     # Generate caption
-    duration = data.get("duration", "unknown")
-    quality = data.get("quality", "unknown")
-    file_type = data.get("extension", "unknown")
     caption = (
         f"**Dᴜʀᴀᴛɪᴏɴ :** {duration}\n"
         f"**Qᴜᴀʟɪᴛʏ :** {quality}\n"
@@ -62,8 +64,18 @@ async def auto_download_instagram_video(client, message):
         f"**Sɪᴢᴇ :** {size_mb} MB"
     )
 
+    # Create inline keyboard with audio button
+    buttons = []
+    if audio_url:
+        buttons.append([InlineKeyboardButton("Extract Audio", url=audio_url)])
+    markup = InlineKeyboardMarkup(buttons) if buttons else None
+
     try:
-        await message.reply_video(temp_video, caption=caption)
+        await message.reply_video(
+            temp_video,
+            caption=caption,
+            reply_markup=markup
+        )
         await a.delete()
     except Exception as e:
         await a.edit(f"Failed to send video: {e}")
