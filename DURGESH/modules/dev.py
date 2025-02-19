@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import traceback
 from inspect import getfullargspec
 from io import StringIO
@@ -16,11 +17,25 @@ from DURGESH.database.extra import protect_message
 
 
 async def aexec(code, client, message):
-    exec(
-        "async def __aexec(client, message): "
-        + "".join(f"\n {a}" for a in code.split("\n"))
-    )
-    return await locals()["__aexec"](client, message)
+    # Prepare the code with correct indentation inside an async function
+    indented_code = "\n    ".join(code.split("\n"))
+    exec_code = f"async def __aexec(client, message):\n    {indented_code}"
+    
+    # Dictionary to capture local variables from exec()
+    exec_locals = {}
+    
+    try:
+        exec(exec_code, globals(), exec_locals)
+    except:
+        raise  # Handle or log the exception
+    
+    # Check if __aexec was defined
+    if "__aexec" not in exec_locals:
+        raise KeyError("The '__aexec' function was not defined in the dynamic code.")
+    
+    # Execute the dynamic function and return its result
+    func = exec_locals["__aexec"]
+    return await func(client, message)
 
 
 async def edit_or_reply(msg: Message, **kwargs):
@@ -62,11 +77,11 @@ async def executor(client: app, message: Message):
     sys.stderr = old_stderr
     evaluation = "\n"
     if exc:
-        evaluation += exc
+        evaluation += exc.strip()
     elif stderr:
-        evaluation += stderr
+        evaluation += stderr.strip()
     elif stdout:
-        evaluation += stdout
+        evaluation += stdout.strip()
     else:
         evaluation += "Success"
     final_output = f"<b>⥤ ʀᴇsᴜʟᴛ :</b>\n<pre language='python'>{evaluation}</pre>"
@@ -80,14 +95,14 @@ async def executor(client: app, message: Message):
                 [
                     InlineKeyboardButton(
                         text="⏳",
-                        callback_data=f"runtime {t2-t1} Seconds",
+                        callback_data=f"runtime {t2-t1:.3f} Seconds",
                     )
                 ]
             ]
         )
         await message.reply_document(
             document=filename,
-            caption=f"<b>⥤ ᴇᴠᴀʟ :</b>\n<code>{cmd[0:980]}</code>\n\n<b>⥤ ʀᴇsᴜʟᴛ :</b>\nAttached Document",
+            caption=f"<b>⥤ ᴇᴠᴀʟ :</b>\n<code>{cmd[:980]}</code>\n\n<b>⥤ ʀᴇsᴜʟᴛ :</b>\nAttached Document",
             quote=False,
             reply_markup=keyboard,
         )
@@ -100,7 +115,7 @@ async def executor(client: app, message: Message):
                 [
                     InlineKeyboardButton(
                         text="⏳",
-                        callback_data=f"runtime {round(t2-t1, 3)} Seconds",
+                        callback_data=f"runtime {t2-t1:.3f} Seconds",
                     ),
                     InlineKeyboardButton(
                         text="🗑",
@@ -160,9 +175,10 @@ async def shellrunner(_, message: Message):
                     stderr=subprocess.PIPE,
                 )
             except Exception as err:
-                await edit_or_reply(message, text=f"<b>ERROR :</b>\n<pre>{err}</pre>")
-            output += f"<b>{code}</b>\n"
-            output += process.stdout.read()[:-1].decode("utf-8")
+                await edit_or_reply(message, text=f"<b>ᴇʀʀᴏʀ :</b>\n<pre>{err}</pre>")
+                break
+            output += f"<b>{x}</b>\n"
+            output += process.stdout.read().decode("utf-8").strip()
             output += "\n"
     else:
         shell = re.split(""" (?=(?:[^'"]|'[^']*'|"[^"]*")*$)""", text)
@@ -175,7 +191,6 @@ async def shellrunner(_, message: Message):
                 stderr=subprocess.PIPE,
             )
         except Exception as err:
-            print(err)
             exc_type, exc_obj, exc_tb = sys.exc_info()
             errors = traceback.format_exception(
                 etype=exc_type,
@@ -183,10 +198,10 @@ async def shellrunner(_, message: Message):
                 tb=exc_tb,
             )
             return await edit_or_reply(
-                message, text=f"<b>ERROR :</b>\n<pre>{''.join(errors)}</pre>"
+                message, text=f"<b>ᴇʀʀᴏʀ :</b>\n<pre>{''.join(errors)}</pre>"
             )
-        output = process.stdout.read()[:-1].decode("utf-8")
-    if str(output) == "\n":
+        output = process.stdout.read().decode("utf-8").strip()
+    if not output:
         output = None
     if output:
         if len(output) > 4096:
@@ -196,11 +211,10 @@ async def shellrunner(_, message: Message):
                 message.chat.id,
                 "output.txt",
                 reply_to_message_id=message.id,
-                caption="<code>Output</code>",
+                caption="<code>ᴏᴜᴛᴘᴜᴛ</code>",
             )
             return os.remove("output.txt")
-        await edit_or_reply(message, text=f"<b>OUTPUT :</b>\n<pre>{output}</pre>")
+        await edit_or_reply(message, text=f"<b>ᴏᴜᴛᴘᴜᴛ :</b>\n<pre>{output}</pre>")
     else:
-        await edit_or_reply(message, text="<b>OUTPUT :</b>\n<code>None</code>")
-
+        await edit_or_reply(message, text="<b>ᴏᴜᴛᴘᴜᴛ :</b>\n<code>ɴᴏᴛʜɪɴɢ ᴛᴏ sʜᴏᴡ</code>")
     await message.stop_propagation()
