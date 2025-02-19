@@ -1,85 +1,59 @@
-import re
-import os
-import requests
-import logging
-from pyrogram import filters, Client
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from DURGESH import app
 
+import re
+import requests
+from pyrogram import filters
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
 @app.on_message(filters.text & filters.regex(r"^(https?://)?(www\.)?(instagram\.com|instagr\.am)/.*$"))
 async def auto_download_instagram_video(client, message):
-    url = message.text.strip()
+    url = message.text
     a = await message.reply_text("ᴘʀᴏᴄᴇssɪɴɢ...")
     api_url = f"https://insta-dl.hazex.workers.dev/?url={url}"
 
     try:
-        logging.info(f"Requesting: {api_url}")
-        response = requests.get(api_url, timeout=10)
-        response.raise_for_status()
+        response = requests.get(api_url)
         result = response.json()
-        if result.get("error") or "result" not in result:
-            raise ValueError("Invalid API response")
         data = result["result"]
-        video_url = data["url"]
         
-        # Validate video URL
-        head_response = requests.head(video_url, timeout=5)
-        head_response.raise_for_status()
-
-    except requests.exceptions.RequestException as e:
-        err_msg = f"API Error: {e}"
-        await a.edit(err_msg)
-        return
-
-    # Download video locally
-    temp_video = "temp_video.mp4"
-    try:
-        with requests.get(video_url, stream=True, timeout=60) as r:
-            r.raise_for_status()
-            with open(temp_video, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-        # Get video details
-        duration = data.get("duration", "unknown")
-        quality = data.get("quality", "unknown")
-        file_type = data.get("extension", "unknown")
-        size = os.path.getsize(temp_video)
-        size_mb = round(size / (1024 * 1024), 2)
-        audio_url = data.get("audio_url")  # Get audio URL if available
-        
+        if not result["error"]:
+            video_url = data["url"]
+            duration = data.get("duration", "N/A")
+            quality = data.get("quality", "N/A")
+            type = data.get("extension", "N/A")
+            size = data.get("formattedSize", "N/A")
+            
+            # Create keyboard with Extract Audio button
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("Extract Audio 🎵", callback_data=f"extract_{video_url}")]
+            ])
+            
+            caption = (
+                f"**Dᴜʀᴀᴛɪᴏɴ :** {duration}\n"
+                f"**Qᴜᴀʟɪᴛʏ :** {quality}\n"
+                f"**Tʏᴘᴇ :** {type}\n"
+                f"**Sɪᴢᴇ :** {size}"
+            )
+            await a.delete()
+            await message.reply_video(video_url, caption=caption, reply_markup=keyboard)
+        else:
+            await a.edit("Fᴀɪʟᴇᴅ ᴛᴏ ᴅᴏᴡɴʟᴏᴀᴅ ʀᴇᴇʟ")
     except Exception as e:
-        await a.edit(f"Video download failed: {e}")
-        return
-    finally:
-        if not os.path.exists(temp_video):
-            await a.edit("Video file not found")
-            return
+        await a.edit(f"Eʀʀᴏʀ: {str(e)}")
 
-    # Generate caption
-    caption = (
-        f"**Dᴜʀᴀᴛɪᴏɴ :** {duration}\n"
-        f"**Qᴜᴀʟɪᴛʏ :** {quality}\n"
-        f"**Tʏᴘᴇ :** {file_type}\n"
-        f"**Sɪᴢᴇ :** {size_mb} MB"
-    )
-
-    # Create inline keyboard with audio button
-    buttons = []
-    if audio_url:
-        buttons.append([InlineKeyboardButton("Extract Audio", url=audio_url)])
-    markup = InlineKeyboardMarkup(buttons) if buttons else None
-
+@app.on_callback_query(filters.regex("^extract_"))
+async def extract_audio(client, callback_query):
     try:
-        await message.reply_video(
-            temp_video,
-            caption=caption,
-            reply_markup=markup
+        video_url = callback_query.data.replace("extract_", "")
+        await callback_query.message.reply_text("Exᴛʀᴀᴄᴛɪɴɢ ᴀᴜᴅɪᴏ...")
+        
+        # Send as audio file
+        await callback_query.message.reply_audio(
+            video_url,
+            title="Instagram Audio",
+            performer="Instagram Reel"
         )
-        await a.delete()
+        await callback_query.answer("Audio extracted successfully!")
     except Exception as e:
-        await a.edit(f"Failed to send video: {e}")
-        return
-
-    # Cleanup
-    os.remove(temp_video)
+        await callback_query.answer(f"Error: {str(e)}", show_alert=True)
