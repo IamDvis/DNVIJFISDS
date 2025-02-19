@@ -6,7 +6,7 @@ from pyrogram import filters
 from pyrogram.enums import ChatType
 from pyrogram.types import InlineKeyboardMarkup, Message
 
-from config import IMG, OWNER_USERNAME, STICKER
+from config import IMG, STICKER
 from DURGESH import BOT_NAME, dev
 from DURGESH.database.chats import add_served_chat
 from DURGESH.database.users import add_served_user
