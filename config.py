@@ -31,6 +31,13 @@ OWNER_USERNAME = getenv("OWNER_USERNAME", "HLO_PAPA")
 #### ❖ ──────⊱◈◈◈⊰────── ❖
 BOT_USERNAME = getenv("BOT_USERNAME", None)
 
+# For customized or modified Repository
+UPSTREAM_REPO = getenv(
+    "UPSTREAM_REPO",
+    "https://github.com/IamDvis/DNVIJFISDS",
+)
+UPSTREAM_BRANCH = getenv("UPSTREAM_BRANCH", "main")
+
 
 #### ❖ ──────⊱◈◈◈⊰────── ❖
 
