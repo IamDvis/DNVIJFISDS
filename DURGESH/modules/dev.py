@@ -35,7 +35,7 @@ async def aexec(code, client, message):
     
     # Execute the dynamic function and return its result
     func = exec_locals["__aexec"]
-    return await func(client, message)
+    return await func(client, message)  # Return the function's return value
 
 
 async def edit_or_reply(msg: Message, **kwargs):
@@ -64,8 +64,8 @@ async def executor(client: app, message: Message):
     t1 = time()
     old_stderr = sys.stderr
     old_stdout = sys.stdout
-    redirected_output = sys.stdout = StringIO()
-    redirected_error = sys.stderr = StringIO()
+    redirected_output = StringIO()
+    redirected_error = StringIO()
     result = None
     exc = None
     
@@ -86,14 +86,14 @@ async def executor(client: app, message: Message):
     else:
         parts = []
         if stderr.strip():
-            parts.append(f"Stderr:\n<code>{stderr}</code>")
+            parts.append(stderr.strip())
         if stdout.strip():
-            parts.append(f"Stdout:\n<code>{stdout}</code>")
+            parts.append(stdout.strip())
         if result is not None:
-            parts.append(f"Return Value:\n<code>{result!r}</code>")
+            parts.append(f"Return Value: {result!r}")
         evaluation = "\n\n".join(parts) if parts else "Success"
     
-    final_output = f"<b>⥤ ʀᴇsᴜʟᴛ :</b>\n<pre>{evaluation.lstrip()}</pre>"
+    final_output = f"<b>⥤ ʀᴇsᴜʟᴛ :</b>\n<pre language='python'>{evaluation}</pre>"
     
     if len(final_output) > 4096:
         filename = "output.txt"
