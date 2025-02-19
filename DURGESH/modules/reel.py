@@ -54,27 +54,33 @@ async def extract_audio(client, callback_query):
     if not video_url:
         await callback_query.answer("Video URL expired. Try again.", show_alert=True)
         return
-    
+
     status_msg = await callback_query.message.reply_text("Downloading audio...")
-    
+
     try:
-        # Download audio
+        # Use pytube to download the best audio stream
+        yt = YouTube(video_url)
+        audio_stream = yt.streams.filter(only_audio=True).first()
+
+        if not audio_stream:
+            await status_msg.edit("No audio stream found.")
+            return
+
         output_path = f"downloads/audio_{message_id}.mp3"
-        os.system(f'ffmpeg -i "{video_url}" -vn -acodec libmp3lame "{output_path}"')
-        
-        # Send audio file
+        audio_stream.download(filename=output_path)
+
+        # Send the audio file
         await callback_query.message.reply_audio(
             output_path,
             title="Instagram Audio",
             performer="Instagram Reel"
         )
-        
+
         # Cleanup
         os.remove(output_path)
         del app.url_store[str(message_id)]
         await status_msg.delete()
         await callback_query.answer("Audio downloaded successfully!")
-        
+
     except Exception as e:
         await status_msg.edit(f"Error extracting audio: {str(e)}")
-
