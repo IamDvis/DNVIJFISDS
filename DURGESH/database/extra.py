@@ -1,5 +1,5 @@
 
-from DURGSH import app
+from DURGESH import app
 
 protected_messages = {}
 
