@@ -28,6 +28,9 @@ SUPPORT_CHANNEL = getenv("UPDATE_CHANNEL", "https://t.me/net_pro_max")
 #### ❖ ──────⊱◈◈◈⊰────── ❖
 BOT_USERNAME = getenv("BOT_USERNAME", None)
 
+#### ❖ ──────⊱◈◈◈⊰────── ❖
+OWNER_USERNAME = getenv("OWNER_USERNAME", None)
+
 # For customized or modified Repository
 UPSTREAM_REPO = getenv(
     "UPSTREAM_REPO",
